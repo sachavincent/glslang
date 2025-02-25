@@ -23,3 +23,6 @@ tools/
 # Random OS stuff
 .DS_Store
 ._*
+/buildDebug
+/buildRelease
+/install
