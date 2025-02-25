@@ -257,13 +257,25 @@ if(GLSLANG_ENABLE_INSTALL)
     endif()
 
     set(PUBLIC_HEADERS
-        Public/ResourceLimits.h
         Public/ShaderLang.h
+        Public/ResourceLimits.h
         Public/resource_limits_c.h
+        Include/arrays.h
+        Include/BaseTypes.h
+        Include/Common.h
+        Include/ConstantUnion.h
+        Include/InfoSink.h
+        Include/InitializeGlobals.h
+        Include/intermediate.h
+        Include/PoolAlloc.h
+        Include/ResourceLimits.h
         Include/glslang_c_interface.h
         Include/glslang_c_shader_types.h
-        Include/ResourceLimits.h
+        Include/ShHandle.h
+        Include/SpirvIntrinsics.h
+        Include/Types.h
         Include/visibility.h
+        MachineIndependent/localintermediate.h
         MachineIndependent/Versions.h)
 
     foreach(file ${PUBLIC_HEADERS})

@@ -1575,7 +1575,7 @@ public:
     void setSpirvInstruction(const TSpirvInstruction& inst) { spirvInst = inst; }
     const TSpirvInstruction& getSpirvInstruction() const { return spirvInst; }
 
-    void setEndLoc(TSourceLoc loc) { endLoc = loc; }
+    void setEndLoc(TSourceLoc loc_) { endLoc = loc_; }
     TSourceLoc getEndLoc() const { return endLoc; }
 
     void setLinkType(TLinkType l) { linkType = l; }

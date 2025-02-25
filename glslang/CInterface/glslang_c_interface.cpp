@@ -417,6 +417,7 @@ GLSLANG_EXPORT int glslang_shader_preprocess(glslang_shader_t* shader, const gls
     glslang::TShader::Includer& Includer = (input->callbacks.include_local||input->callbacks.include_system)
         ? static_cast<glslang::TShader::Includer&>(callbackIncluder)
         : static_cast<glslang::TShader::Includer&>(dirStackFileIncluder);
+    std::unique_ptr<glslang::TShader::BufferBindingHandler> customBindingsHandler = std::make_unique<glslang::TShader::BasicBufferBindingHandler>();
     return shader->shader->preprocess(
         reinterpret_cast<const TBuiltInResource*>(input->resource),
         input->default_version,
@@ -425,7 +426,8 @@ GLSLANG_EXPORT int glslang_shader_preprocess(glslang_shader_t* shader, const gls
         input->forward_compatible != 0,
         (EShMessages)c_shader_messages(input->messages),
         &shader->preprocessedGLSL,
-        Includer
+        Includer,
+        customBindingsHandler.get()
     );
 }
 

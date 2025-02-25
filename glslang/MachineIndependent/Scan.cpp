@@ -886,6 +886,7 @@ int TScanContext::tokenize(TPpContext* pp, TParserToken& token)
         case PpAtomConstDouble:        parserToken->sType.lex.d    = ppToken.dval;       return DOUBLECONSTANT;
         case PpAtomConstFloat16:       parserToken->sType.lex.d    = ppToken.dval;       return FLOAT16CONSTANT;
         case PpAtomIdentifier:
+        case PpAtomNormalBinding:
         {
             int token = tokenizeIdentifier();
             field = false;

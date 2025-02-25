@@ -1461,7 +1461,9 @@ void CompileAndLinkShaderUnits(std::vector<ShaderCompUnit> compUnits)
 
         if (Options & EOptionOutputPreprocessed) {
             std::string str;
-            if (shader->preprocess(GetResources(), defaultVersion, ENoProfile, false, false, messages, &str, includer)) {
+            std::unique_ptr<glslang::TShader::BufferBindingHandler> customBindingsHandler =
+                std::make_unique<glslang::TShader::BasicBufferBindingHandler>();
+            if (shader->preprocess(GetResources(), defaultVersion, ENoProfile, false, false, messages, &str, includer, customBindingsHandler.get())) {
                 PutsIfNonEmpty(str.c_str());
             } else {
                 CompileFailed = 1;

@@ -1082,7 +1082,10 @@ private:
 //
 // This is not an officially supported or fully working path.
 struct DoPreprocessing {
-    explicit DoPreprocessing(std::string* string): outputString(string) {}
+    explicit DoPreprocessing(std::string* string, TShader::BufferBindingHandler* customBindingsHandler)
+        : outputString(string), customBindingsHandler_(customBindingsHandler)
+    {
+    }
     bool operator()(TParseContextBase& parseContext, TPpContext& ppContext,
                     TInputScanner& input, bool versionWillBeError,
                     TSymbolTable&, TIntermediate&,
@@ -1162,6 +1165,7 @@ struct DoPreprocessing {
                 outputBuffer += errorMessage;
         });
 
+        int lastLastToken = EndOfInput; // lastToken records the last last token processed.
         int lastToken = EndOfInput; // lastToken records the last token processed.
         std::string lastTokenName;
         do {
@@ -1199,12 +1203,30 @@ struct DoPreprocessing {
             }
             if (token == PpAtomIdentifier)
                 lastTokenName = ppToken.name;
+            if (token == PpAtomConstString)
+                outputBuffer += "\"";
+            if (token != PpAtomCustomBinding) {
+                if (lastLastToken == PpAtomNormalBinding) {
+                    const int bindingLocation = customBindingsHandler_->GetLocation(ppToken.name);
+                    if (bindingLocation < 0) {
+                        parseContext.ppError(ppToken.loc, "Invalid binding location", ppToken.name, "");
+                    }
+                    outputBuffer += std::to_string(bindingLocation);
+                } else {
+                    outputBuffer += ppToken.name;
+                }
+            } else {
+                const int bindingLocation = customBindingsHandler_->GetLocation(ppToken.name);
+                if (bindingLocation < 0) {
+                    parseContext.ppError(ppToken.loc, "Invalid binding location", ppToken.name, "");
+                }
+
+                outputBuffer += std::to_string(bindingLocation);
+            }
+            if (token == PpAtomConstString)
+                outputBuffer += "\"";
+            lastLastToken = lastToken;
             lastToken = token;
-            if (token == PpAtomConstString)
-                outputBuffer += "\"";
-            outputBuffer += ppToken.name;
-            if (token == PpAtomConstString)
-                outputBuffer += "\"";
         } while (true);
         outputBuffer += '\n';
         *outputString = std::move(outputBuffer);
@@ -1218,6 +1240,7 @@ struct DoPreprocessing {
         return success;
     }
     std::string* outputString;
+    TShader::BufferBindingHandler* customBindingsHandler_;
 };
 
 // DoFullParse is a valid ProcessingConext template argument for fully
@@ -1275,9 +1298,10 @@ bool PreprocessDeferred(
     TShader::Includer& includer,
     TIntermediate& intermediate, // returned tree, etc.
     std::string* outputString,
+    TShader::BufferBindingHandler* customBindingsHandler,
     TEnvironment* environment = nullptr)
 {
-    DoPreprocessing parser(outputString);
+    DoPreprocessing parser(outputString, customBindingsHandler);
     return ProcessDeferred(compiler, shaderStrings, numStrings, inputLengths, stringNames,
                            preamble, optLevel, resources, defaultVersion,
                            defaultProfile, forceDefaultVersionAndProfile, overrideVersion,
@@ -1758,6 +1782,10 @@ TShader::~TShader()
     delete infoSink;
     delete compiler;
     delete intermediate;
+
+    if (&GetThreadPoolAllocator() == pool) {
+        SetThreadPoolAllocator(nullptr);
+    }
     delete pool;
 }
 
@@ -1907,7 +1935,7 @@ bool TShader::preprocess(const TBuiltInResource* builtInResources,
                          bool forceDefaultVersionAndProfile,
                          bool forwardCompatible, EShMessages message,
                          std::string* output_string,
-                         Includer& includer)
+                         Includer& includer, TShader::BufferBindingHandler* customBindingsHandler)
 {
     SetThreadPoolAllocator(pool);
 
@@ -1917,8 +1945,8 @@ bool TShader::preprocess(const TBuiltInResource* builtInResources,
     return PreprocessDeferred(compiler, strings, numStrings, lengths, stringNames, preamble,
                               EShOptNone, builtInResources, defaultVersion,
                               defaultProfile, forceDefaultVersionAndProfile, overrideVersion,
-                              forwardCompatible, message, includer, *intermediate, output_string,
-                              &environment);
+                              forwardCompatible, message, includer, *intermediate, output_string, 
+                              customBindingsHandler, &environment);
 }
 
 const char* TShader::getInfoLog()
@@ -1950,6 +1978,9 @@ TProgram::~TProgram()
         if (newedIntermediate[s])
             delete intermediate[s];
 
+    if (&GetThreadPoolAllocator() == pool) {
+        SetThreadPoolAllocator(nullptr);
+    }
     delete pool;
 }
 

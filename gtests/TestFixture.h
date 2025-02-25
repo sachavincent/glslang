@@ -694,10 +694,12 @@ public:
         shader.setStringsWithLengths(&shaderStrings, &shaderLengths, 1);
         std::string ppShader;
         glslang::TShader::ForbidIncluder includer;
+        std::unique_ptr<glslang::TShader::BufferBindingHandler> customBindingsHandler =
+            std::make_unique<glslang::TShader::BasicBufferBindingHandler>();
         const bool success = shader.preprocess(
             GetDefaultResources(), defaultVersion, defaultProfile, forceVersionProfile, isForwardCompatible,
             (EShMessages)(EShMsgOnlyPreprocessor | EShMsgCascadingErrors),
-            &ppShader, includer);
+            &ppShader, includer, customBindingsHandler.get());
 
         std::string log = shader.getInfoLog();
         log += shader.getInfoDebugLog();

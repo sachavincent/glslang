@@ -42,6 +42,7 @@
 #include "../MachineIndependent/Versions.h"
 
 #include <cstring>
+#include <unordered_map>
 #include <vector>
 
 #ifdef _WIN32
@@ -579,6 +580,26 @@ public:
     void setCompileOnly() { compileOnly = true; }
     bool getCompileOnly() const { return compileOnly; }
 
+
+    struct BufferBindingHandler {
+        virtual ~BufferBindingHandler() = default; 
+        virtual int GetLocation(const std::string& tokenLocation) = 0;
+    };
+
+    struct BasicBufferBindingHandler : BufferBindingHandler {
+        virtual ~BasicBufferBindingHandler() = default; 
+        virtual int GetLocation(const std::string& tokenLocation) override
+        {
+            char* end;
+            long value = std::strtol(tokenLocation.c_str(), &end, 10);
+
+            // Check if no conversion was performed or if there are leftover characters
+            if (end == tokenLocation.c_str() || *end != '\0')
+                return -1;
+
+           return static_cast<int>(value);
+        }
+    };
     // Interface to #include handlers.
     //
     // To support #include, a client of Glslang does the following:
@@ -659,6 +680,11 @@ public:
     // Fail all Includer searches
     class ForbidIncluder : public Includer {
     public:
+        virtual IncludeResult* includeLocal(const char* /*headerName*/, const char* /*includerName*/,
+                                            size_t /*inclusionDepth*/) override
+        {
+            return nullptr;
+        }
         virtual void releaseInclude(IncludeResult*) override { }
     };
 
@@ -692,7 +718,7 @@ public:
         const TBuiltInResource* builtInResources, int defaultVersion,
         EProfile defaultProfile, bool forceDefaultVersionAndProfile,
         bool forwardCompatible, EShMessages message, std::string* outputString,
-        Includer& includer);
+        Includer& includer, BufferBindingHandler* customBindingsHandler);
 
     GLSLANG_EXPORT const char* getInfoLog();
     GLSLANG_EXPORT const char* getInfoDebugLog();

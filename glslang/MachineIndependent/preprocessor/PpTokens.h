@@ -171,6 +171,10 @@ enum EFixedAtoms {
     // #include
     PpAtomInclude,
 
+
+    PpAtomCustomBinding,
+    PpAtomNormalBinding,
+
     PpAtomLast,
 };
 

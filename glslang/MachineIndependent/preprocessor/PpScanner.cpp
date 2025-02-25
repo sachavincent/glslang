@@ -495,7 +495,44 @@ int TPpContext::tStringInput::scan(TPpToken* ppToken)
             if (ch > PpAtomMaxSingle)
                 ch = PpAtomBadToken;
             return ch;
+        case '$':
+            ppToken->name[len++] = (char)ch;
+            ch = getch();
+            if (len == 1) {
+                if (ch == '(')
+                    ppToken->name[len++] = (char)ch;
+                else {
+                    ungetch();
+                    return '$';
+                }
+                ch = getch();
+            }
 
+            do {
+                if (len < MaxTokenLength) {
+                    ppToken->name[len++] = (char)ch;
+                    ch = getch();
+                } else {
+                    if (!AlreadyComplained) {
+                        pp->parseContext.ppError(ppToken->loc, "name too long", "", "");
+                        AlreadyComplained = 1;
+                    }
+                    ch = getch();
+                }
+            } while ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_');
+
+            if (ch == ')')
+                ppToken->name[len++] = (char)ch;
+            else
+                return ch;
+
+            
+            // line continuation with no token before or after makes len == 0, and need to start over skipping white space, etc.
+            if (len == 0)
+                continue;
+
+            ppToken->name[len] = '\0';
+            return PpAtomCustomBinding;
         case 'A': case 'B': case 'C': case 'D': case 'E':
         case 'F': case 'G': case 'H': case 'I': case 'J':
         case 'K': case 'L': case 'M': case 'N': case 'O':
@@ -528,8 +565,30 @@ int TPpContext::tStringInput::scan(TPpToken* ppToken)
             if (len == 0)
                 continue;
 
-            ppToken->name[len] = '\0';
             ungetch();
+            ppToken->name[len] = '\0';
+            {
+                int rewindCounter = 0;
+                if (std::string(ppToken->name) == "binding") {
+                    while (ch != ')') {
+                        ch = getch();
+                        ++rewindCounter;
+                        if (ch >= '0' && ch <= '9') {
+                            for (int i = 0; i < rewindCounter; ++i)
+                                ungetch();
+
+                            return PpAtomNormalBinding;
+                        } else if (ch == '$') {
+                            for (int i = 0; i < rewindCounter; ++i)
+                                ungetch();
+
+                            return PpAtomIdentifier;
+                        }
+                    }
+
+                    return PpAtomNormalBinding;
+                }
+            }
             return PpAtomIdentifier;
         case '0':
             ppToken->name[len++] = (char)ch;
@@ -1247,7 +1306,10 @@ int TPpContext::tokenize(TPpToken& ppToken)
                 parseContext.ppError(ppToken.loc, "preprocessor directive cannot be preceded by another token", "#", "");
                 return EndOfInput;
             }
-        }
+        } else if (token == PpAtomCustomBinding) {
+            return token;
+        } else if (token == PpAtomNormalBinding)
+            return token;
         previous_token = token;
 
         if (token == '\n')
